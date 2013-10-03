@@ -1,0 +1,14 @@
+SCREEN_SIZE = CCDirector:sharedDirector():getWinSize()
+CENTER = ccp(SCREEN_SIZE.width/2,SCREEN_SIZE.height/2)
+
+ACTION_STATE_NONE = 0
+ACTION_STATE_IDLE = 1
+ACTION_STATE_ATTACK = 2
+ACTION_STATE_WALK = 3
+ACTION_STATE_HURT = 4
+ACTION_STATE_KNOCKOUT = 5
+
+BoundingRect = {
+actual,
+original
+}
