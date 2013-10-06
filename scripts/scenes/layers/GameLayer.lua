@@ -5,6 +5,7 @@ local GameLayer  = class("GameLayer", function()
 	return display.newLayer()
 end)
 
+local Delegate = require("scenes.Controller.SimpleDPadDelegate"):extend()
 local TileMap
 local DisabledRect
 local ActorList = {}
@@ -28,6 +29,10 @@ function GameLayer:ctor()
 	
 	local updateFunc = function(dt) self:onUpdate(dt) end
 	self:scheduleUpdate(updateFunc)
+end
+
+function GameLayer:getClass()
+	return Delegate
 end
 
 function GameLayer:onUpdate(dt)
@@ -82,15 +87,15 @@ function GameLayer:setTouchDisabledRect(param)
 	DisabledRect = param
 end
 
-function GameLayer:didChangeDirectionTo(SimpleDPad,Direction) 
+function Delegate:didChangeDirectionTo(SimpleDPad,Direction) 
 	Hero:walkWithDirection(Direction)
 end
 
-function GameLayer:isHoldingDirection(SimpleDPad,Direction)
+function Delegate:isHoldingDirection(SimpleDPad,Direction)
 	Hero:walkWithDirection(Direction)
 end
 
-function GameLayer:simpleDPadTouchEnded(SimpleDPad, Direction)
+function Delegate:simpleDPadTouchEnded(SimpleDPad, Direction)
 	if Hero:getActionState() == ACTION_STATE_WALK then
 		Hero:idle()
 	end

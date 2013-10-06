@@ -12,7 +12,7 @@ function GameScene:ctor()
     self:addChild(HudLayer)
     
     local DPad =  HudLayer:getDPad()
-    DPad:setDelegate(GameLayer)
+    DPad:setDelegate(GameLayer:getClass())
     local DPadSize = DPad:getContentSize()
     GameLayer:setTouchDisabledRect(CCRect(
     DPad:getPositionX() - DPadSize.width/2,
