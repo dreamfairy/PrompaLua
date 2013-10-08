@@ -7,8 +7,3 @@ ACTION_STATE_ATTACK = 2
 ACTION_STATE_WALK = 3
 ACTION_STATE_HURT = 4
 ACTION_STATE_KNOCKOUT = 5
-
-BoundingRect = {
-actual,
-original
-}

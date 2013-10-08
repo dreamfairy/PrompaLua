@@ -10,9 +10,42 @@ local HERO_IDLE = "heroIdle"
 local HERO_ATTACK ="heroAttack"
 local HERO_WALK = "heroWalk"
 
-function Hero:ctor()
-	Prototype:setMeasurements(29,39)
-	Prototype:setAttribute(80,100,20)
+--movement
+local Velocity
+local DesiredPosition
+  
+--attribute
+local WalkSpeed
+local HitPoints
+local Damage
+local ActionState
+
+--measurements
+local CenterToSide
+local CenterToBottom
+
+--actions
+local IdleAction
+local AttackAction
+local WalkAction
+local HurtAction
+local KnockOutAction
+
+--box
+local HitBox
+local AttackBox
+
+function Hero:ctor(name)
+  WalkSpeed = 80
+  HitPoints = 100
+  Damage = 20
+  CenterToSide = 29
+  CenterToBottom = 39
+  self.Name = name
+end
+
+function Hero:getName()
+  return self.Name
 end
 
 function Hero:getClass()
@@ -27,7 +60,7 @@ function Hero:createIdleAction()
 	local frames = display.newFrames("hero_idle_%02d.png",0,6)
 	local animation = display.newAnimation(frames,1/12)
 	display.setAnimationCache(HERO_IDLE,animation)
-	Prototype:setIdleAction(CCRepeatForever:create(CCAnimate:create(animation)))
+	IdleAction = CCRepeatForever:create(CCAnimate:create(animation))
 end
 
 function Hero:createAttackAction()
@@ -35,7 +68,7 @@ function Hero:createAttackAction()
 	local animation = display.newAnimation(frames,1/24)
 	display.setAnimationCache(HERO_ATTACK,animation)
 	local idelFunc = CCCallFunc:create(function() self:idle() end)
-	Prototype:setAttackAction(CCSequence:createWithTwoActions(CCAnimate:create(animation),idelFunc))
+	AttackAction = CCSequence:createWithTwoActions(CCAnimate:create(animation),idelFunc)
 end
 
 function Hero:createWalkAction()
@@ -43,29 +76,65 @@ function Hero:createWalkAction()
 	local animation = display.newAnimation(frames,1/12)
 	display.setAnimationCache(HERO_WALK,animation)
 	local idelFunc = CCCallFunc:create(function() self:idle() end)
-	Prototype:setWalkAction(CCRepeatForever:create(CCAnimate:create(animation)))
+	WalkAction = CCRepeatForever:create(CCAnimate:create(animation))
+end
+
+function Hero:getWalkSpeed()
+  return WalkSpeed
 end
 
 function Hero:getCenterToSides()
-	return Prototype:getCenterToSides()
+	return CenterToSide
 end
 
 function Hero:getCenterToBottom()
-	return Prototype:getCenterToBottom()
+	return CenterToBottom
 end
 
 function Hero:getDesiredPosition()
-	return Prototype:getDesiredPosition()
+	return DesiredPosition
 end
 
 function Hero:setDesiredPosition(param)
-	Prototype:setDesiredPosition(param)
+	DesiredPosition = param
 end
 
 function Hero:getActionState()
-	return Prototype:getActionState()
+	return ActionState
 end
 
+function Hero:setActionState(param)
+  ActionState = param
+end
+
+function Hero:getVelocity()
+  return Velocity
+end
+
+function Hero:setVelocity(param)
+  Velocity = param
+end
+
+function Hero:getWalkAction()
+  return WalkAction
+end
+
+function Hero:getAttackAction()
+  return AttackAction
+end
+
+function Hero:getIdleAction()
+  return IdleAction
+end
+
+function Hero:getHitBox()
+  return HitBox
+end
+
+function Hero:getAttackBox()
+  return AttackBox
+end
+  
 function Hero:idle()
 	Prototype.idle(self)
 end

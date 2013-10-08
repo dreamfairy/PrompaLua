@@ -1,27 +1,23 @@
-require("config")
-require("scenes.define")
-
 local GameLayer  = class("GameLayer", function()
 	return display.newLayer()
 end)
 
+require("config")
 local Delegate = require("scenes.Controller.SimpleDPadDelegate"):extend()
+local Robot = require("scenes.GameObjects.Robot")
 local TileMap
 local DisabledRect
-local ActorList = {}
-local Actors
-local ActorsCurrentIndex = 0
-local ActorsIndex = function() 
-	ActorsCurrentIndex = ActorsCurrentIndex + 1
-return  ActorsCurrentIndex
-end
+local RobotCount = 50
 local Hero
 
 function GameLayer:ctor()
-	Actors = display.newBatchNode(CONFIG_ROLE_SHEET_IMAGE)
-	self:addChild(Actors,1)
+	self.Actors = display.newBatchNode(CONFIG_ROLE_SHEET_IMAGE)
+	self:addChild(self.Actors,1)
+	self.ActorList = {}
+	self.CurrentIndex = 0
 	self:initTileMap()
 	self:initHero();
+	self:initRobots();
 	
 	self.touchLayer = display.newLayer()
 	self:addChild(self.touchLayer,2)
@@ -38,6 +34,28 @@ end
 function GameLayer:onUpdate(dt)
 	Hero:update(dt)
 	self:updatePositions()
+	self:setViewPointCenter(Hero:getPosition());
+	self:renderActors()
+end
+
+function GameLayer:renderActors()
+  local count = #self.ActorList
+    for i = 1, count do
+      local actor = self.ActorList[i]
+        local zOrder = (TileMap:getMapSize().height * TileMap:getTileSize().height) - actor:getPositionY()
+        self.Actors:reorderChild(actor,zOrder)
+--        CCLuaLog(actor.getClass().getName(actor))
+    end
+end
+  
+function GameLayer:setViewPointCenter(heroPosX, heroPosY)
+  local x = math.max(heroPosX,SCREEN_SIZE.width/2)
+  local y = math.max(heroPosY,SCREEN_SIZE.height/2)
+  x = math.min(x,(TileMap:getMapSize().width * TileMap:getTileSize().width) - SCREEN_SIZE.width/2)
+  y = math.min(y,(TileMap:getMapSize().height * TileMap:getTileSize().height) - SCREEN_SIZE.height/2)
+  local actualPosition = ccp(x,y)
+  local viewPoint = ccpSub(CENTER,actualPosition)
+  self:setPosition(viewPoint)
 end
 
 function GameLayer:updatePositions()
@@ -69,13 +87,32 @@ function GameLayer:onEnter()
 end
 
 function GameLayer:initHero()
-	Hero = require("scenes.GameObjects.Hero"):new()
-	Actors:addChild(Hero)
+	Hero = require("scenes.GameObjects.Hero").new("Hero")
+	self:addActors(Hero)
 	Hero:setPosition(Hero:getCenterToSides(),80)
 	local x, y = Hero:getPosition()
 	Hero:setDesiredPosition(ccp(x,y))
 	Hero:idle()
-	ActorList[ActorsIndex] = Hero
+end
+
+function GameLayer:initRobots()
+  for RobotIndex = 1, RobotCount do
+    local RobotCell = Robot.new("Robot"..RobotIndex)
+    self:addActors(RobotCell)
+    local minX = SCREEN_SIZE.width + RobotCell:getCenterToSides()
+    local maxX = TileMap:getMapSize().width * TileMap:getTileSize().width - RobotCell:getCenterToSides()
+    local minY = RobotCell:getCenterToBottom()
+    local maxY = 3 * TileMap:getTileSize().height + RobotCell:getCenterToBottom()
+    RobotCell:setScaleX(-1)
+    RobotCell:setPosition(ccp(math.random(minX, maxX), math.random(minY, maxY)))
+    RobotCell:setDesiredPosition(ccp(RobotCell:getPositionX(),RobotCell:getPositionY()))
+    RobotCell:idle()
+  end
+end
+
+function GameLayer:addActors(actor)
+  self.Actors:addChild(actor)
+  self.ActorList[#self.ActorList + 1] = actor
 end
 
 function GameLayer:initTileMap()
