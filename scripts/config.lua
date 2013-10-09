@@ -16,3 +16,12 @@ CONFIG_TILEMAP_FILE = "pd_tilemap.tmx"
 
 -- auto scale mode
 CONFIG_SCREEN_AUTOSCALE = "FIXED_WIDTH"
+
+--“Ù–ß
+GAME_SFX = {
+    HIT0  = "pd_hit0.wav",
+    HIT1 = "pd_hit1.wav",
+    HERO_DEATH = "pd_herodeath.wav",
+    BOT_DEATH = "pd_botdeath.wav",
+    BGM = "LevelWinSound.mp3",
+}

@@ -33,13 +33,34 @@ function ActionSprite:attack()
 		self:runAction(self:getAttackAction())
 		ActionState = ACTION_STATE_ATTACK
 		self:setActionState(ActionState)
+		self:playAttackSound()
 	end
 end
 
 function ActionSprite:hurtWithDamage(damage)
+  local ActionState = self:getActionState()
+  local HurtPoint = self:getHurtPoint()
+  if ActionState ~= ACTION_STATE_KNOCKOUT then
+    self:stopAllActions()
+    self:createHurtAction();
+    self:runAction(self:getHurtAction())
+    ActionState = ACTION_STATE_HURT
+    self:setActionState(ActionSprite)
+    
+    HurtPoint = HurtPoint - damage
+    self:setHurtPoint(HurtPoint)
+    if HurtPoint <= 0 then
+      ActionSprite.knockout(self)
+    end
+  end
 end
 
 function ActionSprite:knockout()
+  self:stopAllActions()
+  self:createKnockOutAction()
+  self:runAction(self:getKnockOutAction())
+  self:setActionState(ACTION_STATE_KNOCKOUT)
+  self:playDeathSound()
 end
 
 function ActionSprite:walkWithDirection(direction)
@@ -66,14 +87,13 @@ function ActionSprite:walkWithDirection(direction)
 end
 
 function ActionSprite:createBoundingBoxWithOrigin(origin,size)
-  local boundingBox = {
-    original = CCRect(),
-    actual = CCRect()
-  }
+  local boundingBox = {}
+  boundingBox.original = CCRect()
+  boundingBox.actual = CCRect()
   
   boundingBox.original.origin = origin
   boundingBox.original.size = size
-  boundingBox.actual.origin = ccpAdd(ccp(self:getPositionX(),self:getPositionY()),ccp(boundingBox.original.origin.x,boundingBox.original.original.origin.y))
+  boundingBox.actual.origin = ccpAdd(ccp(self:getPositionX(),self:getPositionY()),ccp(boundingBox.original.origin.x,boundingBox.original.origin.y))
   boundingBox.actual.size = size
   
   return boundingBox
@@ -82,14 +102,25 @@ end
 function ActionSprite:transformBoxes()
   local hitBox = self:getHitBox()
   local attackBox = self:getAttackBox()
-  local originY = function() if self:getScaleX() == -1 then return - attackBox.original.size.width - hitBox.original.size.width else return 0 end end
-  hitBox.actual.origin = ccpAdd(ccp(self:getPositionX(),self:getPositionY()), ccp(hitBox.original.origin.x, hitBox.original.origin.y));
-  attackBox.actual.origin = ccpAdd(ccp(self:getPositionX(),self:getPositionY()), ccp(attackBox.original.origin.x + originY, attackBox.original.origin.y));
+  local originX
+  
+  if self:getScaleX() == -1 then
+    originX = - attackBox.original.size.width - hitBox.original.size.width
+  else
+    originX = 0
+  end
+  
+  local position = ccp(self:getPositionX(),self:getPositionY())
+  hitBox.actual.origin = ccpAdd(position, ccp(hitBox.original.origin.x, hitBox.original.origin.y));
+  attackBox.actual.origin = ccpAdd(position, ccp(attackBox.original.origin.x + originX, attackBox.original.origin.y));
+  
+  self:setHitBox(hitBox)
+  self:setAttackBox(attackBox)
 end
 
-function ActionSprite:setPosition(param)
-  self:setPosition(param)
-  self:transformBoxes()
+function ActionSprite:setPosition(posX,posY)
+  self:setPosition(posX,posY)
+  ActionSprite.transformBoxes(self)
 end
 
 function ActionSprite:update(dt)

@@ -11,6 +11,11 @@ function game.startup()
     CCFileUtils:sharedFileUtils():addSearchPath("res/")
     display.addSpriteFramesWithFile(CONFIG_ROLE_SHEET_FILE,CONFIG_ROLE_SHEET_IMAGE)
 
+    -- preload all sounds
+    for k, v in pairs(GAME_SFX) do
+        audio.preloadSound(v)
+    end
+    
     game.enterMainScene()
 end
 

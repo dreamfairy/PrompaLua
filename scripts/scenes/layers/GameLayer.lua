@@ -3,17 +3,20 @@ local GameLayer  = class("GameLayer", function()
 end)
 
 require("config")
+require("scenes.define")
 local Delegate = require("scenes.Controller.SimpleDPadDelegate"):extend()
 local Robot = require("scenes.GameObjects.Robot")
 local TileMap
 local DisabledRect
 local RobotCount = 50
 local Hero
+local TimeVal = 0
 
 function GameLayer:ctor()
 	self.Actors = display.newBatchNode(CONFIG_ROLE_SHEET_IMAGE)
 	self:addChild(self.Actors,1)
 	self.ActorList = {}
+	self.RobotList = {}
 	self.CurrentIndex = 0
 	self:initTileMap()
 	self:initHero();
@@ -36,6 +39,61 @@ function GameLayer:onUpdate(dt)
 	self:updatePositions()
 	self:setViewPointCenter(Hero:getPosition());
 	self:renderActors()
+	self:updateRobots(dt)
+end
+
+function GameLayer:updateRobots(dt)
+  TimeVal = TimeVal + dt
+  local alive = 0
+  local distanceSQ
+  local randomChoice
+  local curTime = TimeVal * 1000
+  local count = #self.RobotList
+  local heroPosition = ccp(Hero:getPositionX(),Hero:getPositionY())
+  for i = 1, count do
+    local robot = self.RobotList[i]
+    local robotPosition = ccp(robot:getPositionX(),robot:getPositionY())
+    robot:update(dt)
+    if robot:getActionState() ~= ACTION_STATE_KNOCKOUT then
+      alive = alive + 1
+      if curTime > robot:getNextDecisionTime() then
+        distanceSQ = ccpDistanceSQ(robotPosition,heroPosition)
+        if distanceSQ <= 250 then
+          robot:setNextDecisionTime(curTime + math.random() * 1000)
+          randomChoice = math.random(0,1)
+          
+          if randomChoice <= 0.2 then
+            if heroPosition.x > robotPosition.x then
+              robot:setScaleX(1)
+            else
+              robot:setScaleX(-1)
+            end
+            
+            robot:setNextDecisionTime(curTime + math.random() * 2000)
+            robot:attack()
+            if robot:getActionState()  == ACTION_STATE_ATTACK then
+              if math.abs(heroPosition.y - robotPosition.y) < 10 then
+                if Hero:getHitBox().actual:intersectsRect(robot:getAttackBox().actual) then
+                  Hero:hurtWithDamage(robot:getDamage())
+                end
+              end
+            end
+         else
+           robot:idle()
+         end
+       elseif distanceSQ <= SCREEN_SIZE.width * SCREEN_SIZE.width then
+         robot:setNextDecisionTime(curTime + math.random() * 1000)
+         randomChoice = math.random(0,2)
+         if randomChoice == 0 then
+           local moveDirection = ccpNormalize(ccpSub(heroPosition,robotPosition))
+           robot:walkWithDirection(moveDirection)
+         else
+           robot:idle()
+         end
+       end
+     end
+   end
+ end
 end
 
 function GameLayer:renderActors()
@@ -44,7 +102,6 @@ function GameLayer:renderActors()
       local actor = self.ActorList[i]
         local zOrder = (TileMap:getMapSize().height * TileMap:getTileSize().height) - actor:getPositionY()
         self.Actors:reorderChild(actor,zOrder)
---        CCLuaLog(actor.getClass().getName(actor))
     end
 end
   
@@ -60,20 +117,52 @@ end
 
 function GameLayer:updatePositions()
 	local position = Hero:getDesiredPosition()
-	local posX = math.min(TileMap:getMapSize().width * TileMap:getTileSize().width - Hero:getCenterToSides(),
-		math.max(Hero:getCenterToSides(), position.x))
-		
-	local posY = math.min(3 * TileMap:getTileSize().height + Hero:getCenterToBottom(),
-		math.max(Hero:getCenterToBottom(), position.y))
+	local posX
+	local posY
+	if position.x ~= Hero:getPositionX() or position.y ~= Hero:getPositionY() then
+	  posX = math.min(TileMap:getMapSize().width * TileMap:getTileSize().width - Hero:getCenterToSides(),
+    math.max(Hero:getCenterToSides(), position.x))
+    
+    posY = math.min(3 * TileMap:getTileSize().height + Hero:getCenterToBottom(),
+    math.max(Hero:getCenterToBottom(), position.y))
+  
+    Hero.getClass().setPosition(Hero,posX,posY)
+	end
 	
-	Hero:setPosition(posX,posY)
+	local count = #self.RobotList
+	for i = 1, count do
+	 local robot = self.RobotList[i]
+	 position = robot:getDesiredPosition()
+	 if position.x ~= robot:getPositionX() or position.y ~= robot:getPositionY() then
+	   posX = math.min(TileMap:getMapSize().width * TileMap:getTileSize().width - robot:getCenterToSides(),
+       math.max(robot:getCenterToSides(), position.x))
+    
+     posY = math.min(3 * TileMap:getTileSize().height + robot:getCenterToBottom(),
+       math.max(robot:getCenterToBottom(), position.y))
+  
+     robot.getClass().setPosition(robot,posX,posY)
+	 end
+	end
 end
 
 function GameLayer:onTouch(event,x,y)
 	--CCLuaLog("Click:"..event.." "..x.." "..y)
 	if event == "began" then
 		if not DisabledRect:containsPoint(ccp(x,y)) then
-			Hero:attack()
+		  Hero:attack()
+			if Hero:getActionState() == ACTION_STATE_ATTACK then
+			 local count = #self.RobotList
+       for i = 1, count do
+        local robot = self.RobotList[i]
+        if robot:getActionState() ~= ACTION_STATE_KNOCKOUT then
+          if math.abs(Hero:getPositionY() - robot:getPositionY()) < 10 then
+            if Hero:getAttackBox().actual:intersectsRect(robot:getHitBox().actual) then
+              robot:hurtWithDamage(Hero:getDamage())
+            end
+          end
+        end
+       end
+			end
 			return true
 		end
 	end
@@ -89,7 +178,7 @@ end
 function GameLayer:initHero()
 	Hero = require("scenes.GameObjects.Hero").new("Hero")
 	self:addActors(Hero)
-	Hero:setPosition(Hero:getCenterToSides(),80)
+	Hero.getClass().setPosition(Hero,Hero:getCenterToSides(),80)
 	local x, y = Hero:getPosition()
 	Hero:setDesiredPosition(ccp(x,y))
 	Hero:idle()
@@ -99,12 +188,13 @@ function GameLayer:initRobots()
   for RobotIndex = 1, RobotCount do
     local RobotCell = Robot.new("Robot"..RobotIndex)
     self:addActors(RobotCell)
+    self.RobotList[#self.RobotList + 1] = RobotCell
     local minX = SCREEN_SIZE.width + RobotCell:getCenterToSides()
     local maxX = TileMap:getMapSize().width * TileMap:getTileSize().width - RobotCell:getCenterToSides()
     local minY = RobotCell:getCenterToBottom()
     local maxY = 3 * TileMap:getTileSize().height + RobotCell:getCenterToBottom()
+    RobotCell.getClass().setPosition(RobotCell,math.random(minX, maxX),math.random(minY, maxY))
     RobotCell:setScaleX(-1)
-    RobotCell:setPosition(ccp(math.random(minX, maxX), math.random(minY, maxY)))
     RobotCell:setDesiredPosition(ccp(RobotCell:getPositionX(),RobotCell:getPositionY()))
     RobotCell:idle()
   end
